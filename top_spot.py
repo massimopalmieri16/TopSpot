@@ -66,9 +66,9 @@ def user_top_items(access_token):
     st.table(table)
 
 def main():
+    st.set_page_config(page_title="TopSpot")
     st.title("TopSpot")
     st.subheader("Your Spotify top artists and tracks")
-    st.set_page_config(page_title="TopSpot")
     
     # Create OAuth2Component instance
     oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, TOKEN_URL, None)
