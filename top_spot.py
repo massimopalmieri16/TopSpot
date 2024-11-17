@@ -4,14 +4,40 @@ import streamlit as st
 from streamlit_oauth import OAuth2Component
 from streamlit_oauth import StreamlitOauthError
 
-def spotify_top_items(access_token):
+# Get spotify app id and secret from streamlit secrets
+CLIENT_ID = st.secrets["CLIENT_ID"]
+CLIENT_SECRET = st.secrets['CLIENT_SECRET']
+REDIRECT_URI = st.secrets['REDIRECT_URI']
+
+# Constants
+PROFILE_URL = "https://api.spotify.com/v1/me"
+TOP_ITEMS_URL = "https://api.spotify.com/v1/me/top"
+AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+SCOPE = "user-top-read"
+
+def user_profile(access_token):
+    r = requests.get(url=PROFILE_URL, headers={"Authorization": f"Bearer {access_token}"})
+    if r.status_code == 200:
+        json_response = r.json()
+        st.success(f"Successfully logged as **{json_response["display_name"]}**", icon="✅")
+        st.button("Logout", on_click=logout, use_container_width=True)
+    else:
+        st.error(r.json())
+
+def logout():
+    st.session_state.clear()
+
+def user_top_items(access_token):
+    # Inputs
     type = st.radio("Type", ["artists", "tracks"], horizontal=True)
     time_range = st.radio("Time range", ["short_term", "medium_term", "long_term"], horizontal=True, captions=["Last 4 weeks","Last 6 months","Last year"],)
     num_items = st.radio("Number of items", [10, 20, 50, 100, 200, 500, 1000], horizontal=True)
 
-    url = f"https://api.spotify.com/v1/me/top/{type}"
+    url = f"{TOP_ITEMS_URL}/{type}"
     headers = {"Authorization": f"Bearer {access_token}"}
     
+    # Get items from spotify api in chunks of 50
     num_iter = math.ceil(num_items / 50)
     table = []
     offset = 0
@@ -28,7 +54,7 @@ def spotify_top_items(access_token):
                 if type == "artists":
                     table.append({"Artist": item["name"], "Genres": ", ".join(item["genres"]), "Popularity": item["popularity"]})
                 else:
-                    table.append({"Track": item["name"], "Album": item["album"]["name"], "Artist": item["artists"][0]["name"]})
+                    table.append({"Track": item["name"], "Artist": item["artists"][0]["name"], "Album": item["album"]["name"]})
         else:
             st.write("Error")
             st.write(r.json())
@@ -36,26 +62,15 @@ def spotify_top_items(access_token):
 
         offset+=50
 
+    # Show data as table
     st.table(table)
 
-
 def main():
-    
     st.title("TopSpot")
-    st.header("Your Spotify top artists and tracks")
-    
-    # Set environment variables
-    AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
-    TOKEN_URL = "https://accounts.spotify.com/api/token"
-    REFRESH_TOKEN_URL = "https://accounts.spotify.com/api/token"
-    REVOKE_TOKEN_URL = None
-    CLIENT_ID = st.secrets["CLIENT_ID"]
-    CLIENT_SECRET = st.secrets['CLIENT_SECRET']
-    REDIRECT_URI = 'http://localhost:8501/component/streamlit_oauth.authorize_button/index.html'
-    SCOPE = "user-top-read"
+    st.subheader("Your Spotify top artists and tracks")
     
     # Create OAuth2Component instance
-    oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, REFRESH_TOKEN_URL, REVOKE_TOKEN_URL)
+    oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, TOKEN_URL, None)
 
     # Check if token exists in session state
     if 'token' not in st.session_state:
@@ -68,14 +83,25 @@ def main():
                 st.rerun()
         except StreamlitOauthError as ex:
             if 'access_denied' in str(ex.args):
+                # Ignore access denied error, in case user cancel auth process
                 pass
             else:
                 raise
     else:
-        # If token exists in session state, show the token
+        # If token exists in session state, show profile and top items
         token = st.session_state['token']
-        spotify_top_items(token["access_token"])
+        user_profile(token["access_token"])
+        st.divider()
+        user_top_items(token["access_token"])
 
+    # Footer
+    st.divider()
+    st.info(
+    """
+    [Check the source code on GitHub](https://github.com/massimopalmieri16/TopSpot)
+    """,
+    icon="🧑‍💻",
+)
 
 if __name__ == "__main__":
     main()
