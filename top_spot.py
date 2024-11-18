@@ -125,7 +125,7 @@ def main():
     icon="🔧")
     st.info(
     """
-    [Check the source code on GitHub](https://github.com/massimopalmieri16/TopSpot)
+    Check the source code on [GitHub](https://github.com/massimopalmieri16/TopSpot)
     """,
     icon="🧑‍💻")
 
