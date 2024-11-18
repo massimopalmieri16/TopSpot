@@ -16,6 +16,21 @@ AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
 SCOPE = "user-top-read"
 
+def write_request_error(message: str, response: requests.Response):
+    # Check if response has json content
+    try:
+        st.error(
+        f"""
+        {message}\n
+        {response.json()}
+        """)
+    except requests.exceptions.JSONDecodeError:
+        st.error(
+        f"""
+        {message}\n
+        {response.text}
+        """)
+
 def user_profile(access_token):
     r = requests.get(url=PROFILE_URL, headers={"Authorization": f"Bearer {access_token}"})
     if r.status_code == 200:
@@ -23,7 +38,7 @@ def user_profile(access_token):
         st.success(f"Successfully logged as **{json_response["display_name"]}**", icon="✅")
         st.button("Logout", on_click=logout, use_container_width=True)
     else:
-        st.error(r.json())
+        write_request_error(f"Error getting user's profile {r.status_code}", r)
 
 def logout():
     st.session_state.clear()
@@ -56,8 +71,7 @@ def user_top_items(access_token):
                 else:
                     table.append({"Track": item["name"], "Artist": item["artists"][0]["name"], "Album": item["album"]["name"]})
         else:
-            st.write("Error")
-            st.write(r.json())
+            write_request_error(f"Error getting user's top items {r.status_code}", r)
             break
 
         offset+=50
