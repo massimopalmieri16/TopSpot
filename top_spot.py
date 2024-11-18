@@ -24,7 +24,7 @@ def write_request_error(message: str, response: requests.Response):
         {message}\n
         {response.json()}
         """)
-    except requests.exceptions.JSONDecodeError:
+    except Exception:
         st.error(
         f"""
         {message}\n
