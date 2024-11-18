@@ -17,28 +17,35 @@ TOKEN_URL = "https://accounts.spotify.com/api/token"
 SCOPE = "user-top-read"
 
 def write_request_error(message: str, response: requests.Response):
-    # Check if response has json content
-    try:
-        st.error(
-        f"""
-        {message}\n
-        {response.json()}
-        """)
-    except Exception:
-        st.error(
-        f"""
-        {message}\n
-        {response.text}
-        """)
+    if "the user may not be registered" in response.text:
+        st.error("The user is not registered to use this app. This app is in development mode so only invited user can access it.")
+    else:
+        # Check if response has json content
+        try:
+            st.error(
+            f"""
+            {message}\n
+            {response.json()}
+            """)
+        except Exception:
+            st.error(
+            f"""
+            {message}\n
+            {response.text}
+            """)
 
 def user_profile(access_token):
+    result = False
     r = requests.get(url=PROFILE_URL, headers={"Authorization": f"Bearer {access_token}"})
     if r.status_code == 200:
         json_response = r.json()
         st.success(f"Successfully logged as **{json_response["display_name"]}**", icon="✅")
-        st.button("Logout", on_click=logout, use_container_width=True)
+        result = True
     else:
         write_request_error(f"Error getting user's profile {r.status_code}", r)
+        result = False
+    st.button("Logout", on_click=logout, use_container_width=True)
+    return result
 
 def logout():
     st.session_state.clear()
@@ -91,7 +98,7 @@ def main():
     if 'token' not in st.session_state:
         # If not, show authorize button
         try:
-            result = oauth2.authorize_button("Login with your Spotify account", REDIRECT_URI, SCOPE, pkce="S256", use_container_width=True)
+            result = oauth2.authorize_button("Login with Spotify", REDIRECT_URI, SCOPE, pkce="S256", use_container_width=True)
             if result and 'token' in result:
                 # If authorization successful, save token in session state
                 st.session_state.token = result.get('token')
@@ -105,18 +112,22 @@ def main():
     else:
         # If token exists in session state, show profile and top items
         token = st.session_state['token']
-        user_profile(token["access_token"])
-        st.divider()
-        user_top_items(token["access_token"])
+        if user_profile(token["access_token"]):
+            st.divider()
+            user_top_items(token["access_token"])
 
     # Footer
     st.divider()
     st.info(
     """
+    This app is currently in development and accessible only to invited users.
+    """,
+    icon="🔧")
+    st.info(
+    """
     [Check the source code on GitHub](https://github.com/massimopalmieri16/TopSpot)
     """,
-    icon="🧑‍💻",
-)
+    icon="🧑‍💻")
 
 if __name__ == "__main__":
     main()
